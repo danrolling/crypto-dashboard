@@ -1,3 +1,12 @@
+alert("APP.JS LOADED");
+document.body.insertAdjacentHTML(
+  "beforeend",
+  '<div style="position:fixed;top:0;left:0;right:0;background:red;color:white;z-index:99999;padding:8px;font-size:14px;">APP.JS LOADED</div>'
+);
+
+
+
+
 console.log("APP.JS LOADED");
 
 const SUPABASE_URL = "https://ihphfkwoiiyhvvvfipal.supabase.co";
