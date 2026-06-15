@@ -15,29 +15,44 @@ const logoutBtn = document.getElementById("logout-btn");
 const loginError = document.getElementById("login-error");
 
 function showLogin() {
-  loginScreen.classList.remove("hidden");
-  appScreen.classList.add("hidden");
+  console.log("SHOW LOGIN");
+
+  loginScreen.style.display = "flex";
+  appScreen.style.display = "none";
 }
 
 async function showApp() {
+  console.log("SHOW APP");
+
   loginScreen.style.display = "none";
   appScreen.style.display = "block";
 
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")
-    .select("*")
-    .single();
+    .select("*");
 
   console.log("portfolio summary:", data);
   console.log("portfolio error:", error);
 }
 
 async function checkSession() {
-  const { data } = await supabaseClient.auth.getSession();
-  data.session ? showApp() : showLogin();
+  console.log("CHECK SESSION");
+
+  const { data, error } = await supabaseClient.auth.getSession();
+
+  console.log("session data:", data);
+  console.log("session error:", error);
+
+  if (data.session) {
+    await showApp();
+  } else {
+    showLogin();
+  }
 }
 
 loginBtn.addEventListener("click", async () => {
+  console.log("LOGIN BUTTON CLICKED");
+
   loginError.textContent = "";
 
   const email = document.getElementById("email").value.trim();
@@ -48,15 +63,19 @@ loginBtn.addEventListener("click", async () => {
     password
   });
 
+  console.log("login error:", error);
+
   if (error) {
     loginError.textContent = error.message;
     return;
   }
 
-  showApp();
+  await showApp();
 });
 
 logoutBtn.addEventListener("click", async () => {
+  console.log("LOGOUT BUTTON CLICKED");
+
   await supabaseClient.auth.signOut();
   showLogin();
 });
