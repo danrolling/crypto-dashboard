@@ -18,8 +18,8 @@ function showLogin() {
 }
 
 async function showApp() {
-  loginScreen.style.display = "none";
-  appScreen.style.display = "block";
+  loginScreen.style.display = "hidden";
+  appScreen.style.display = "hidden";
 
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")
