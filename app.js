@@ -1,16 +1,30 @@
-alert("APP.JS LOADED");
-document.body.insertAdjacentHTML(
-  "beforeend",
-  '<div style="position:fixed;top:0;left:0;right:0;background:red;color:white;z-index:99999;padding:8px;font-size:14px;">APP.JS LOADED</div>'
-);
-
-
-
-
-console.log("APP.JS LOADED");
-
 const SUPABASE_URL = "https://ihphfkwoiiyhvvvfipal.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_19kbJOQDarnTwoqzBLSHGg_YVwoodAD";
+
+function debug(message) {
+  let box = document.getElementById("debug-box");
+
+  if (!box) {
+    box = document.createElement("div");
+    box.id = "debug-box";
+    box.style.position = "fixed";
+    box.style.top = "0";
+    box.style.left = "0";
+    box.style.right = "0";
+    box.style.zIndex = "99999";
+    box.style.background = "#111827";
+    box.style.color = "#22c55e";
+    box.style.fontSize = "12px";
+    box.style.padding = "8px";
+    box.style.maxHeight = "180px";
+    box.style.overflow = "auto";
+    document.body.appendChild(box);
+  }
+
+  box.innerHTML += `<div>${message}</div>`;
+}
+
+debug("APP.JS LOADED");
 
 const supabaseClient = window.supabase.createClient(
   SUPABASE_URL,
@@ -23,15 +37,17 @@ const loginBtn = document.getElementById("login-btn");
 const logoutBtn = document.getElementById("logout-btn");
 const loginError = document.getElementById("login-error");
 
+debug("ELEMENTS LOADED");
+
 function showLogin() {
-  console.log("SHOW LOGIN");
+  debug("SHOW LOGIN");
 
   loginScreen.style.display = "flex";
   appScreen.style.display = "none";
 }
 
 async function showApp() {
-  console.log("SHOW APP");
+  debug("SHOW APP");
 
   loginScreen.style.display = "none";
   appScreen.style.display = "block";
@@ -40,17 +56,17 @@ async function showApp() {
     .from("portfolio_summary_view")
     .select("*");
 
-  console.log("portfolio summary:", data);
-  console.log("portfolio error:", error);
+  debug("PORTFOLIO DATA: " + JSON.stringify(data));
+  debug("PORTFOLIO ERROR: " + JSON.stringify(error));
 }
 
 async function checkSession() {
-  console.log("CHECK SESSION");
+  debug("CHECK SESSION");
 
   const { data, error } = await supabaseClient.auth.getSession();
 
-  console.log("session data:", data);
-  console.log("session error:", error);
+  debug("SESSION EXISTS: " + Boolean(data.session));
+  debug("SESSION ERROR: " + JSON.stringify(error));
 
   if (data.session) {
     await showApp();
@@ -60,7 +76,7 @@ async function checkSession() {
 }
 
 loginBtn.addEventListener("click", async () => {
-  console.log("LOGIN BUTTON CLICKED");
+  debug("LOGIN BUTTON CLICKED");
 
   loginError.textContent = "";
 
@@ -72,7 +88,7 @@ loginBtn.addEventListener("click", async () => {
     password
   });
 
-  console.log("login error:", error);
+  debug("LOGIN ERROR: " + JSON.stringify(error));
 
   if (error) {
     loginError.textContent = error.message;
@@ -83,7 +99,7 @@ loginBtn.addEventListener("click", async () => {
 });
 
 logoutBtn.addEventListener("click", async () => {
-  console.log("LOGOUT BUTTON CLICKED");
+  debug("LOGOUT BUTTON CLICKED");
 
   await supabaseClient.auth.signOut();
   showLogin();
@@ -92,6 +108,8 @@ logoutBtn.addEventListener("click", async () => {
 document.querySelectorAll(".nav-btn").forEach((button) => {
   button.addEventListener("click", () => {
     const targetPage = button.dataset.page;
+
+    debug("NAV CLICKED: " + targetPage);
 
     document.querySelectorAll(".page").forEach((page) => {
       page.classList.remove("active-page");
