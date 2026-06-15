@@ -4,46 +4,24 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Crypto DCA Dashboard</title>
-
   <link rel="stylesheet" href="styles.css">
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
 </head>
-<body>
 
-  <!-- LOGIN SCREEN -->
+<body>
 
   <section id="login-screen" class="login-screen">
     <div class="card">
-
       <h1>DCA Dashboard</h1>
       <p>Login required</p>
 
-      <input
-        id="email"
-        type="email"
-        placeholder="Email"
-        autocomplete="email"
-      >
+      <input id="email" type="email" placeholder="Email">
+      <input id="password" type="password" placeholder="Password">
 
-      <input
-        id="password"
-        type="password"
-        placeholder="Password"
-        autocomplete="current-password"
-      >
-
-      <button id="login-btn">
-        Login
-      </button>
-
+      <button id="login-btn">Login</button>
       <p id="login-error"></p>
-
     </div>
   </section>
-
-  <!-- PROTECTED APP -->
 
   <main id="app-screen" class="app hidden">
 
@@ -52,83 +30,62 @@
         <h1>DCA Dashboard</h1>
         <p>BTC / ETH / USDC accumulation</p>
       </div>
+      <button id="logout-btn" class="logout-btn">Logout</button>
     </header>
 
-    <!-- PORTFOLIO -->
+    <section id="dashboard-page" class="page active-page">
+      <section class="card">
+        <h2>Portfolio</h2>
+        <div class="metric"><span>Total Value</span><strong id="total-value">€0.00</strong></div>
+        <div class="metric"><span>Total Invested</span><strong id="total-invested">€0.00</strong></div>
+        <div class="metric"><span>Unrealized P/L</span><strong id="unrealized-pl">€0.00</strong></div>
+      </section>
 
-    <section class="card">
-      <h2>Portfolio</h2>
+      <section class="card">
+        <h2>Allocation</h2>
+        <div class="metric"><span>BTC</span><strong id="btc-allocation">0%</strong></div>
+        <div class="metric"><span>ETH</span><strong id="eth-allocation">0%</strong></div>
+        <div class="metric"><span>USDC</span><strong id="usdc-allocation">0%</strong></div>
+      </section>
 
-      <div class="metric">
-        <span>Total Value</span>
-        <strong id="total-value">€0.00</strong>
-      </div>
-
-      <div class="metric">
-        <span>Total Invested</span>
-        <strong id="total-invested">€0.00</strong>
-      </div>
-
-      <div class="metric">
-        <span>Unrealized P/L</span>
-        <strong id="unrealized-pl">€0.00</strong>
-      </div>
+      <section class="card">
+        <h2>Monthly Plan</h2>
+        <div class="metric"><span>BTC Core</span><strong>€105</strong></div>
+        <div class="metric"><span>ETH Core</span><strong>€105</strong></div>
+        <div class="metric"><span>USDC / Yield</span><strong>€90</strong></div>
+      </section>
     </section>
 
-    <!-- ALLOCATION -->
-
-    <section class="card">
-      <h2>Allocation</h2>
-
-      <div class="metric">
-        <span>BTC</span>
-        <strong id="btc-allocation">0%</strong>
-      </div>
-
-      <div class="metric">
-        <span>ETH</span>
-        <strong id="eth-allocation">0%</strong>
-      </div>
-
-      <div class="metric">
-        <span>USDC</span>
-        <strong id="usdc-allocation">0%</strong>
-      </div>
+    <section id="prices-page" class="page">
+      <section class="card">
+        <h2>Prices</h2>
+        <p>Price data will be added in Step 4.</p>
+      </section>
     </section>
 
-    <!-- MONTHLY PLAN -->
-
-    <section class="card">
-      <h2>Monthly Plan</h2>
-
-      <div class="metric">
-        <span>BTC Core</span>
-        <strong>€105</strong>
-      </div>
-
-      <div class="metric">
-        <span>ETH Core</span>
-        <strong>€105</strong>
-      </div>
-
-      <div class="metric">
-        <span>USDC / Yield</span>
-        <strong>€90</strong>
-      </div>
+    <section id="transactions-page" class="page">
+      <section class="card">
+        <h2>Transactions</h2>
+        <p>Manual transaction entry will be added in Step 6.</p>
+      </section>
     </section>
 
-    <!-- NAVIGATION -->
+    <section id="journal-page" class="page">
+      <section class="card">
+        <h2>Decision Journal</h2>
+        <p>Decision logging will be added in Step 9.</p>
+      </section>
+    </section>
 
     <nav class="bottom-nav">
-      <button class="active">Dashboard</button>
-      <button>Prices</button>
-      <button>Transactions</button>
-      <button>Journal</button>
+      <button class="nav-btn active" data-page="dashboard-page">Dashboard</button>
+      <button class="nav-btn" data-page="prices-page">Prices</button>
+      <button class="nav-btn" data-page="transactions-page">Transactions</button>
+      <button class="nav-btn" data-page="journal-page">Journal</button>
     </nav>
 
   </main>
 
   <script src="app.js"></script>
-
 </body>
 </html>
