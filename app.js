@@ -13,13 +13,13 @@ const logoutBtn = document.getElementById("logout-btn");
 const loginError = document.getElementById("login-error");
 
 function showLogin() {
-  loginScreen.style.display = "flex";
-  appScreen.style.display = "none";
+  loginScreen.classList.remove("hidden");
+  appScreen.classList.add("hidden");
 }
 
 async function showApp() {
-  loginScreen.style.display = "none";
-  appScreen.style.display = "block";
+  loginScreen.classList.add("hidden");
+  appScreen.classList.remove("hidden");
 
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")
