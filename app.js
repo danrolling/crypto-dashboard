@@ -18,16 +18,8 @@ function showLogin() {
 }
 
 function showApp() {
-  loginScreen.style.display = "hidden";
-  appScreen.style.display = "hidden";
-
-  const { data, error } = await supabaseClient
-    .from("portfolio_summary_view")
-    .select("*")
-    .single();
-
-  console.log("portfolio summary:", data);
-  console.log("portfolio error:", error);
+  loginScreen.classList.add("hidden");
+  appScreen.classList.remove("hidden");
 }
 
 async function checkSession() {
