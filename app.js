@@ -17,7 +17,7 @@ function showLogin() {
   appScreen.classList.add("hidden");
 }
 
-async function showApp() {
+function showApp() {
   loginScreen.style.display = "hidden";
   appScreen.style.display = "hidden";
 
