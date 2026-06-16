@@ -153,6 +153,17 @@ async function loadDcaRecommendations() {
   document.getElementById("btc-dca-amount").textContent = formatEuro(portfolio.btc_amount);
   document.getElementById("eth-dca-amount").textContent = formatEuro(portfolio.eth_amount);
   document.getElementById("usdc-dca-amount").textContent = formatEuro(portfolio.usdc_amount);
+  document.getElementById(`${item.symbol}-score-inline`)
+  .textContent = item.score;
+
+  document.getElementById(`${item.symbol}-recommendation-inline`)
+    .textContent = item.recommendation;
+
+  document.getElementById(`${item.symbol}-multiplier-inline`)
+    .textContent = `${item.dca_multiplier}x`;
+
+  document.getElementById(`${item.symbol}-amount-inline`)
+    .textContent = formatEuro(item.recommended_amount_before_cap);
 
   const { data: summaries, error: summaryError } = await supabaseClient
     .from("dca_dashboard_summary_view")
@@ -225,9 +236,36 @@ async function loadScoreBreakdown() {
 
     const assetBlock = document.createElement("div");
     assetBlock.className = "breakdown-asset";
-    assetBlock.innerHTML = `<h3>${symbol}</h3>`;
+    
+    assetBlock.innerHTML = `
+      <h3>${symbol}</h3>
 
-    rows.forEach((row) => {
+      <div class="asset-summary">
+        <div class="summary-row">
+          <span>Recommendation</span>
+          <strong id="${symbol}-recommendation-inline">--</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Multiplier</span>
+          <strong id="${symbol}-multiplier-inline">--</strong>
+        </div>
+
+        <div class="summary-row">
+          <span>Monthly DCA</span>
+          <strong id="${symbol}-amount-inline">--</strong>
+        </div>
+
+        <div class="summary-row total-score">
+          <span>Total Score</span>
+          <strong id="${symbol}-score-inline">--</strong>
+        </div>
+      </div>
+    `;
+
+    rows
+      .filter(row => row.factor !== "TOTAL SCORE")
+      .forEach((row) => {
       const line = document.createElement("div");
       line.className = "breakdown-row";
 
