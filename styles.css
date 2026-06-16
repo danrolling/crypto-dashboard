@@ -225,3 +225,23 @@ button {
 .total-score strong {
   color: #38bdf8;
 }
+
+.breakdown-group-title {
+  margin: 18px 0 6px;
+  font-size: 13px;
+  color: #38bdf8;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.breakdown-row div {
+  min-width: 0;
+}
+
+.breakdown-row small {
+  display: block;
+  margin-top: 3px;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.3;
+}

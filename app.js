@@ -205,7 +205,8 @@ async function loadScoreBreakdown() {
   const { data, error } = await supabaseClient
     .from("dca_score_details_view")
     .select("*")
-    .order("symbol", { ascending: true });
+    .order("symbol", { ascending: true })
+    .order("sort_order", { ascending: true });
 
   if (error) {
     console.error("Score breakdown error:", error);
@@ -216,19 +217,16 @@ async function loadScoreBreakdown() {
   container.innerHTML = "";
 
   const grouped = data.reduce((acc, row) => {
-    if (!acc[row.symbol]) acc[row.symbol] = [];
-    acc[row.symbol].push(row);
+    if (!acc[row.symbol]) acc[row.symbol] = {};
+    if (!acc[row.symbol][row.group_name]) acc[row.symbol][row.group_name] = [];
+    acc[row.symbol][row.group_name].push(row);
     return acc;
   }, {});
 
-  Object.entries(grouped).forEach(([symbol, rows]) => {
-    rows.sort((a, b) => {
-      return (FACTOR_ORDER[a.factor] ?? 999) - (FACTOR_ORDER[b.factor] ?? 999);
-    });
-
+  Object.entries(grouped).forEach(([symbol, groups]) => {
     const assetBlock = document.createElement("div");
     assetBlock.className = "breakdown-asset";
-    
+
     assetBlock.innerHTML = `
       <h3>${symbol}</h3>
 
@@ -255,18 +253,26 @@ async function loadScoreBreakdown() {
       </div>
     `;
 
-    rows
-      .filter(row => row.factor !== "TOTAL SCORE")
-      .forEach((row) => {
-      const line = document.createElement("div");
-      line.className = "breakdown-row";
+    Object.entries(groups).forEach(([groupName, rows]) => {
+      const groupTitle = document.createElement("h4");
+      groupTitle.className = "breakdown-group-title";
+      groupTitle.textContent = groupName;
+      assetBlock.appendChild(groupTitle);
 
-      line.innerHTML = `
-        <span>${row.factor}: ${row.condition}</span>
-        <strong class="${getPointsClass(row.points)}">${formatPoints(row.points)}</strong>
-      `;
+      rows.forEach((row) => {
+        const line = document.createElement("div");
+        line.className = "breakdown-row";
 
-      assetBlock.appendChild(line);
+        line.innerHTML = `
+          <div>
+            <span>${row.factor}: ${row.condition}</span>
+            <small>${row.threshold}</small>
+          </div>
+          <strong class="${getPointsClass(row.points)}">${formatPoints(row.points)}</strong>
+        `;
+
+        assetBlock.appendChild(line);
+      });
     });
 
     container.appendChild(assetBlock);
