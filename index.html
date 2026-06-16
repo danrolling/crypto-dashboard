@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -49,53 +50,89 @@
       </section>
 
       <section class="card">
-        <h2>Monthly Plan</h2>
-        <div class="metric"><span>BTC Core</span><strong>€105</strong></div>
-        <div class="metric"><span>ETH Core</span><strong>€105</strong></div>
-        <div class="metric"><span>USDC / Yield</span><strong>€90</strong></div>
+        <h2>DCA Recommendation</h2>
+
+        <div class="metric">
+          <span>BTC</span>
+          <strong id="btc-dca-amount">--</strong>
+        </div>
+
+        <div class="metric">
+          <span>ETH</span>
+          <strong id="eth-dca-amount">--</strong>
+        </div>
+
+        <div class="metric">
+          <span>USDC</span>
+          <strong id="usdc-dca-amount">--</strong>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Market Scores</h2>
+
+        <div class="metric">
+          <span>BTC Score</span>
+          <strong id="btc-score">--</strong>
+        </div>
+
+        <div class="metric">
+          <span>BTC Recommendation</span>
+          <strong id="btc-recommendation">--</strong>
+        </div>
+
+        <div class="metric">
+          <span>ETH Score</span>
+          <strong id="eth-score">--</strong>
+        </div>
+
+        <div class="metric">
+          <span>ETH Recommendation</span>
+          <strong id="eth-recommendation">--</strong>
+        </div>
       </section>
     </section>
 
-  <section id="prices-page" class="page">
-  
-    <section class="card">
-      <h2>BTC</h2>
-  
-      <div class="metric">
-        <span>Price</span>
-        <strong id="btc-price">--</strong>
-      </div>
-  
-      <div class="metric">
-        <span>7D Change</span>
-        <strong id="btc-change">--</strong>
-      </div>
+    <section id="prices-page" class="page">
+
+      <section class="card">
+        <h2>BTC</h2>
+
+        <div class="metric">
+          <span>Price</span>
+          <strong id="btc-price">--</strong>
+        </div>
+
+        <div class="metric">
+          <span>7D Change</span>
+          <strong id="btc-change">--</strong>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>ETH</h2>
+
+        <div class="metric">
+          <span>Price</span>
+          <strong id="eth-price">--</strong>
+        </div>
+
+        <div class="metric">
+          <span>7D Change</span>
+          <strong id="eth-change">--</strong>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>EUR / USDC</h2>
+
+        <div class="metric">
+          <span>Rate</span>
+          <strong id="eurusdc-price">--</strong>
+        </div>
+      </section>
+
     </section>
-  
-    <section class="card">
-      <h2>ETH</h2>
-  
-      <div class="metric">
-        <span>Price</span>
-        <strong id="eth-price">--</strong>
-      </div>
-  
-      <div class="metric">
-        <span>7D Change</span>
-        <strong id="eth-change">--</strong>
-      </div>
-    </section>
-  
-    <section class="card">
-      <h2>EUR / USDC</h2>
-  
-      <div class="metric">
-        <span>Rate</span>
-        <strong id="eurusdc-price">--</strong>
-      </div>
-    </section>
-  
-  </section>
 
     <section id="transactions-page" class="page">
       <section class="card">
@@ -122,4 +159,5 @@
 
   <script src="app.js"></script>
 </body>
+
 </html>

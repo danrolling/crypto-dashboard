@@ -135,6 +135,42 @@ async function syncMarketData() {
 }
 
 
+function formatEuro(value) {
+  return `€${Number(value || 0).toFixed(2)}`;
+}
+
+async function loadDcaRecommendations() {
+  const { data: portfolio, error: portfolioError } = await supabaseClient
+    .from("dca_portfolio_recommendation_view")
+    .select("*")
+    .single();
+
+  if (portfolioError) {
+    console.error("DCA portfolio error:", portfolioError);
+    return;
+  }
+
+  document.getElementById("btc-dca-amount").textContent = formatEuro(portfolio.btc_amount);
+  document.getElementById("eth-dca-amount").textContent = formatEuro(portfolio.eth_amount);
+  document.getElementById("usdc-dca-amount").textContent = formatEuro(portfolio.usdc_amount);
+
+  const { data: summaries, error: summaryError } = await supabaseClient
+    .from("dca_dashboard_summary_view")
+    .select("*");
+
+  if (summaryError) {
+    console.error("DCA summary error:", summaryError);
+    return;
+  }
+
+  summaries.forEach((item) => {
+    const symbol = item.symbol.toLowerCase();
+
+    document.getElementById(`${symbol}-score`).textContent = item.score;
+    document.getElementById(`${symbol}-recommendation`).textContent = item.recommendation;
+  });
+}
+
 
 const SUPABASE_URL = "https://ihphfkwoiiyhvvvfipal.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_19kbJOQDarnTwoqzBLSHGg_YVwoodAD";
@@ -167,6 +203,9 @@ async function showApp() {
     console.error(error);
     alert(error.message);
   }
+  
+  await loadDcaRecommendations();
+
   
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")
