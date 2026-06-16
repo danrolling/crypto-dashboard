@@ -37,13 +37,14 @@ const loginError = document.getElementById("login-error");
 function showLogin() {
   loginScreen.classList.remove("hidden");
   appScreen.classList.add("hidden");
-  await testBinance();
 }
 
 async function showApp() {
   loginScreen.classList.add("hidden");
   appScreen.classList.remove("hidden");
-
+  
+  await testBinance();
+  
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")
     .select("*")
