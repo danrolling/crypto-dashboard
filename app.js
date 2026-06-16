@@ -1,3 +1,25 @@
+async function testBinance() {
+  try {
+    const response = await fetch(
+      "https://api.binance.com/api/v3/klines?symbol=BTCUSDC&interval=1d&limit=5"
+    );
+
+    const data = await response.json();
+
+    console.log("BINANCE OK");
+    console.log(data);
+
+    alert("Binance fetch successful");
+  } catch (error) {
+    console.error(error);
+    alert("Binance fetch failed");
+  }
+}
+
+
+
+
+
 const SUPABASE_URL = "https://ihphfkwoiiyhvvvfipal.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_19kbJOQDarnTwoqzBLSHGg_YVwoodAD";
 
@@ -15,6 +37,7 @@ const loginError = document.getElementById("login-error");
 function showLogin() {
   loginScreen.classList.remove("hidden");
   appScreen.classList.add("hidden");
+  await testBinance();
 }
 
 async function showApp() {
