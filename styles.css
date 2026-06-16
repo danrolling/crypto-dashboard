@@ -206,6 +206,8 @@ button {
 .summary-row {
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   padding: 7px 0;
   border-top: 1px solid #1f2937;
 }
@@ -217,6 +219,7 @@ button {
 
 .summary-row strong {
   font-size: 13px;
+  text-align: right;
 }
 
 .total-score strong {
