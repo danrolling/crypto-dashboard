@@ -1,14 +1,61 @@
-async function testBinance() {
+async function syncBtcDailyPrices() {
+  const { data: assets, error: assetError } = await supabaseClient
+    .from("assets")
+    .select("id, symbol")
+    .eq("symbol", "BTC")
+    .single();
+
+  if (assetError) {
+    alert("Could not find BTC asset");
+    console.error(assetError);
+    return;
+  }
+
   const response = await fetch(
     "https://api.binance.com/api/v3/klines?symbol=BTCUSDC&interval=1d&limit=400"
   );
 
-  const data = await response.json();
+  const candles = await response.json();
 
-  alert(`Retrieved ${data.length} candles`);
+  const rows = candles.map((candle) => ({
+    asset_id: assets.id,
+    date: new Date(candle[0]).toISOString().slice(0, 10),
+    open: Number(candle[1]),
+    high: Number(candle[2]),
+    low: Number(candle[3]),
+    close: Number(candle[4]),
+    volume: Number(candle[5]),
+    source: "binance"
+  }));
+
+  const { error: upsertError } = await supabaseClient
+    .from("daily_prices")
+    .upsert(rows, {
+      onConflict: "asset_id,date,source"
+    });
+
+  if (upsertError) {
+    alert("BTC daily upsert failed");
+    console.error(upsertError);
+    return;
+  }
+
+  const { error: cleanupError } = await supabaseClient.rpc(
+    "cleanup_daily_prices",
+    {
+      p_asset_id: assets.id,
+      p_keep_count: 400
+    }
+  );
+
+  if (cleanupError) {
+    alert("BTC daily cleanup failed");
+    console.error(cleanupError);
+    return;
+  }
+
+  alert(`BTC daily sync complete: ${rows.length} candles`);
 }
-
-
 
 
 
@@ -35,7 +82,7 @@ async function showApp() {
   loginScreen.classList.add("hidden");
   appScreen.classList.remove("hidden");
   
-  await testBinance();
+  await syncBtcDailyPrices();
   
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")
