@@ -172,6 +172,60 @@ async function loadDcaRecommendations() {
 }
 
 
+function formatPoints(points) {
+  if (points === null) return "Info";
+  if (points > 0) return `+${points}`;
+  return `${points}`;
+}
+
+function getPointsClass(points) {
+  if (points === null || points === 0) return "points-neutral";
+  if (points > 0) return "points-positive";
+  return "points-negative";
+}
+
+async function loadScoreBreakdown() {
+  const { data, error } = await supabaseClient
+    .from("dca_score_details_view")
+    .select("*")
+    .order("symbol", { ascending: true });
+
+  if (error) {
+    console.error("Score breakdown error:", error);
+    return;
+  }
+
+  const container = document.getElementById("score-breakdown");
+  container.innerHTML = "";
+
+  const grouped = data.reduce((acc, row) => {
+    if (!acc[row.symbol]) acc[row.symbol] = [];
+    acc[row.symbol].push(row);
+    return acc;
+  }, {});
+
+  Object.entries(grouped).forEach(([symbol, rows]) => {
+    const assetBlock = document.createElement("div");
+    assetBlock.className = "breakdown-asset";
+
+    assetBlock.innerHTML = `<h3>${symbol}</h3>`;
+
+    rows.forEach((row) => {
+      const line = document.createElement("div");
+      line.className = "breakdown-row";
+
+      line.innerHTML = `
+        <span>${row.factor}: ${row.condition}</span>
+        <strong class="${getPointsClass(row.points)}">${formatPoints(row.points)}</strong>
+      `;
+
+      assetBlock.appendChild(line);
+    });
+
+    container.appendChild(assetBlock);
+  });
+}
+
 const SUPABASE_URL = "https://ihphfkwoiiyhvvvfipal.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_19kbJOQDarnTwoqzBLSHGg_YVwoodAD";
 
@@ -203,9 +257,9 @@ async function showApp() {
     console.error(error);
     alert(error.message);
   }
-  
-  await loadDcaRecommendations();
 
+  await loadDcaRecommendations();
+  await loadScoreBreakdown();
   
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")

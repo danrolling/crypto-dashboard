@@ -158,3 +158,42 @@ button {
   color: #38bdf8;
   font-weight: 700;
 }
+
+.breakdown-asset {
+  margin-bottom: 18px;
+}
+
+.breakdown-asset h3 {
+  margin: 12px 0 8px;
+  font-size: 16px;
+}
+
+.breakdown-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid #1f2937;
+}
+
+.breakdown-row span {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.breakdown-row strong {
+  font-size: 13px;
+  text-align: right;
+}
+
+.points-positive {
+  color: #22c55e;
+}
+
+.points-negative {
+  color: #f87171;
+}
+
+.points-neutral {
+  color: #94a3b8;
+}
