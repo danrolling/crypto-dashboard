@@ -1,19 +1,11 @@
 async function testBinance() {
-  try {
-    const response = await fetch(
-      "https://api.binance.com/api/v3/klines?symbol=BTCUSDC&interval=1d&limit=5"
-    );
+  const response = await fetch(
+    "https://api.binance.com/api/v3/klines?symbol=BTCUSDC&interval=1d&limit=400"
+  );
 
-    const data = await response.json();
+  const data = await response.json();
 
-    console.log("BINANCE OK");
-    console.log(data);
-
-    alert("Binance fetch successful");
-  } catch (error) {
-    console.error(error);
-    alert("Binance fetch failed");
-  }
+  alert(`Retrieved ${data.length} candles`);
 }
 
 
