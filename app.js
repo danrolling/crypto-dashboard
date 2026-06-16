@@ -44,6 +44,7 @@ async function syncBtcDailyPrices() {
     "cleanup_daily_prices",
     {
       p_asset_id: assets.id,
+      p_source: "binance",
       p_keep_count: 400
     }
   );
