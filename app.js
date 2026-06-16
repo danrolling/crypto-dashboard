@@ -153,17 +153,6 @@ async function loadDcaRecommendations() {
   document.getElementById("btc-dca-amount").textContent = formatEuro(portfolio.btc_amount);
   document.getElementById("eth-dca-amount").textContent = formatEuro(portfolio.eth_amount);
   document.getElementById("usdc-dca-amount").textContent = formatEuro(portfolio.usdc_amount);
-  document.getElementById(`${item.symbol}-score-inline`)
-  .textContent = item.score;
-
-  document.getElementById(`${item.symbol}-recommendation-inline`)
-    .textContent = item.recommendation;
-
-  document.getElementById(`${item.symbol}-multiplier-inline`)
-    .textContent = `${item.dca_multiplier}x`;
-
-  document.getElementById(`${item.symbol}-amount-inline`)
-    .textContent = formatEuro(item.recommended_amount_before_cap);
 
   const { data: summaries, error: summaryError } = await supabaseClient
     .from("dca_dashboard_summary_view")
@@ -175,10 +164,13 @@ async function loadDcaRecommendations() {
   }
 
   summaries.forEach((item) => {
-    const symbol = item.symbol.toLowerCase();
+    const symbol = item.symbol;
 
-    document.getElementById(`${symbol}-score`).textContent = item.score;
-    document.getElementById(`${symbol}-recommendation`).textContent = item.recommendation;
+    document.getElementById(`${symbol}-score-inline`).textContent = item.score;
+    document.getElementById(`${symbol}-recommendation-inline`).textContent = item.recommendation;
+    document.getElementById(`${symbol}-multiplier-inline`).textContent = `${item.dca_multiplier}x`;
+    document.getElementById(`${symbol}-amount-inline`).textContent =
+      formatEuro(item.recommended_amount_before_cap);
   });
 }
 
@@ -313,9 +305,9 @@ async function showApp() {
     alert(error.message);
   }
 
-  await loadDcaRecommendations();
   await loadScoreBreakdown();
-  
+  await loadDcaRecommendations();
+    
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")
     .select("*")

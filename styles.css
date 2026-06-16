@@ -197,3 +197,28 @@ button {
 .points-neutral {
   color: #94a3b8;
 }
+
+.asset-summary {
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 0;
+  border-top: 1px solid #1f2937;
+}
+
+.summary-row span {
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+.summary-row strong {
+  font-size: 13px;
+}
+
+.total-score strong {
+  color: #38bdf8;
+}
