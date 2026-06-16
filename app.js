@@ -1,24 +1,44 @@
-async function syncBtcDailyPrices() {
-  const { data: assets, error: assetError } = await supabaseClient
+const MARKET_ASSETS = [
+  {
+    assetSymbol: "BTC",
+    binanceSymbol: "BTCUSDC"
+  },
+  {
+    assetSymbol: "ETH",
+    binanceSymbol: "ETHUSDC"
+  }
+];
+
+async function getAssetId(symbol) {
+  const { data, error } = await supabaseClient
     .from("assets")
     .select("id, symbol")
-    .eq("symbol", "BTC")
+    .eq("symbol", symbol)
     .single();
 
-  if (assetError) {
-    alert("Could not find BTC asset");
-    console.error(assetError);
-    return;
+  if (error) {
+    throw new Error(`Could not find asset ${symbol}: ${error.message}`);
   }
 
-  const response = await fetch(
-    "https://api.binance.com/api/v3/klines?symbol=BTCUSDC&interval=1d&limit=400"
-  );
+  return data.id;
+}
 
-  const candles = await response.json();
+async function fetchBinanceKlines(binanceSymbol, interval, limit) {
+  const url =
+    `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`;
 
-  const rows = candles.map((candle) => ({
-    asset_id: assets.id,
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Binance error ${response.status} for ${binanceSymbol} ${interval}`);
+  }
+
+  return response.json();
+}
+
+function mapDailyCandle(assetId, candle) {
+  return {
+    asset_id: assetId,
     date: new Date(candle[0]).toISOString().slice(0, 10),
     open: Number(candle[1]),
     high: Number(candle[2]),
@@ -26,7 +46,28 @@ async function syncBtcDailyPrices() {
     close: Number(candle[4]),
     volume: Number(candle[5]),
     source: "binance"
-  }));
+  };
+}
+
+function mapFourHourCandle(assetId, candle) {
+  return {
+    asset_id: assetId,
+    open_time: new Date(candle[0]).toISOString(),
+    close_time: new Date(candle[6]).toISOString(),
+    open: Number(candle[1]),
+    high: Number(candle[2]),
+    low: Number(candle[3]),
+    close: Number(candle[4]),
+    volume: Number(candle[5]),
+    source: "binance"
+  };
+}
+
+async function syncDailyPrices(assetSymbol, binanceSymbol) {
+  const assetId = await getAssetId(assetSymbol);
+  const candles = await fetchBinanceKlines(binanceSymbol, "1d", 400);
+
+  const rows = candles.map((candle) => mapDailyCandle(assetId, candle));
 
   const { error: upsertError } = await supabaseClient
     .from("daily_prices")
@@ -35,27 +76,62 @@ async function syncBtcDailyPrices() {
     });
 
   if (upsertError) {
-    alert("BTC daily upsert failed");
-    console.error(upsertError);
-    return;
+    throw new Error(`${assetSymbol} daily upsert failed: ${upsertError.message}`);
   }
 
   const { error: cleanupError } = await supabaseClient.rpc(
     "cleanup_daily_prices",
     {
-      p_asset_id: assets.id,
+      p_asset_id: assetId,
       p_source: "binance",
       p_keep_count: 400
     }
   );
 
   if (cleanupError) {
-    alert("BTC daily cleanup failed");
-    console.error(cleanupError);
-    return;
+    throw new Error(`${assetSymbol} daily cleanup failed: ${cleanupError.message}`);
   }
 
-  alert(`BTC daily sync complete: ${rows.length} candles`);
+  return rows.length;
+}
+
+async function syncFourHourPrices(assetSymbol, binanceSymbol) {
+  const assetId = await getAssetId(assetSymbol);
+  const candles = await fetchBinanceKlines(binanceSymbol, "4h", 1000);
+
+  const rows = candles.map((candle) => mapFourHourCandle(assetId, candle));
+
+  const { error: upsertError } = await supabaseClient
+    .from("four_hour_prices")
+    .upsert(rows, {
+      onConflict: "asset_id,open_time,source"
+    });
+
+  if (upsertError) {
+    throw new Error(`${assetSymbol} 4h upsert failed: ${upsertError.message}`);
+  }
+
+  const { error: cleanupError } = await supabaseClient.rpc(
+    "cleanup_four_hour_prices",
+    {
+      p_asset_id: assetId,
+      p_source: "binance",
+      p_keep_count: 1000
+    }
+  );
+
+  if (cleanupError) {
+    throw new Error(`${assetSymbol} 4h cleanup failed: ${cleanupError.message}`);
+  }
+
+  return rows.length;
+}
+
+async function syncMarketData() {
+  for (const asset of MARKET_ASSETS) {
+    await syncDailyPrices(asset.assetSymbol, asset.binanceSymbol);
+    await syncFourHourPrices(asset.assetSymbol, asset.binanceSymbol);
+  }
 }
 
 
