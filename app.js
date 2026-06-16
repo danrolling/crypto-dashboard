@@ -159,7 +159,14 @@ async function showApp() {
   loginScreen.classList.add("hidden");
   appScreen.classList.remove("hidden");
   
-  await syncBtcDailyPrices();
+  
+  try {
+  await syncMarketData();
+  alert("Market data sync complete");
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
   
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")
