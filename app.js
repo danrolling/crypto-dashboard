@@ -184,6 +184,20 @@ function getPointsClass(points) {
   return "points-negative";
 }
 
+const FACTOR_ORDER = {
+  "TOTAL SCORE": 0,
+  "200DMA slope": 1,
+  "Regime": 2,
+  "200DMA position": 3,
+  "90D drawdown": 4,
+  "4H trend": 5,
+  "24H momentum": 6,
+  "3D momentum": 7,
+  "50MA 4H extension": 8,
+  "21MA 4H extension": 9,
+  "Volatility": 10
+};
+
 async function loadScoreBreakdown() {
   const { data, error } = await supabaseClient
     .from("dca_score_details_view")
@@ -205,9 +219,12 @@ async function loadScoreBreakdown() {
   }, {});
 
   Object.entries(grouped).forEach(([symbol, rows]) => {
+    rows.sort((a, b) => {
+      return (FACTOR_ORDER[a.factor] ?? 999) - (FACTOR_ORDER[b.factor] ?? 999);
+    });
+
     const assetBlock = document.createElement("div");
     assetBlock.className = "breakdown-asset";
-
     assetBlock.innerHTML = `<h3>${symbol}</h3>`;
 
     rows.forEach((row) => {
