@@ -629,15 +629,18 @@ async function loadPricesDashboard() {
 
     structure.innerHTML += createAssetSection(
       item.symbol,
-      createMetricHtml("Regime", item.market_regime) +
-      createMetricHtml("200DMA Distance", formatPercent(item.distance_from_200d_ma)) +
-      createMetricHtml("200DMA Slope", item.ma_200d_slope_state)
+      createMetric("Regime", item.market_regime) +
+      createMetric("200DMA Distance", formatPercent(item.distance_from_200d_ma)) +
+      createMetric(
+        "200DMA Slope",
+        `${item.ma_200d_slope_state} (${formatPercent(item.ma_200d_slope_30d)} / 30d)`
+      )
     );
 
     valuationRisk.innerHTML += createAssetSection(
       item.symbol,
-      createMetricHtml("90D High Drawdown", formatPercent(item.pullback_pct)) +
-      createMetricHtml(
+      createMetric("90D Pullback", formatPercent(item.pullback_pct)) +
+      createMetric(
         "Volatility",
         `${item.volatility_state} (${formatPercent(item.volatility_30d)})`
       )
