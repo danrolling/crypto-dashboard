@@ -293,6 +293,9 @@ async function syncCurrentPrice(assetSymbol, binanceSymbol) {
 
   const quote = await response.json();
 
+  console.log(assetSymbol, assetId);
+  console.log(quote); 
+
   const { error } = await supabaseClient
     .from("current_prices")
     .upsert(
