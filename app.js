@@ -1,3 +1,13 @@
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const SUPABASE_URL = "https://ihphfkwoiiyhvvvfipal.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_19kbJOQDarnTwoqzBLSHGg_YVwoodAD";
+
+const BINANCE_API_BASE_URL = "https://api.binance.com/api/v3";
+const DATA_SOURCE = "binance";
+
 const MARKET_ASSETS = [
   {
     assetSymbol: "BTC",
@@ -8,6 +18,175 @@ const MARKET_ASSETS = [
     binanceSymbol: "ETHUSDC"
   }
 ];
+
+const PRICE_HISTORY_CONFIG = [
+  {
+    interval: "1d",
+    limit: 400,
+    tableName: "daily_prices",
+    conflictTarget: "asset_id,date,source",
+    cleanupRpc: "cleanup_daily_prices",
+    mapCandle: mapDailyCandle
+  },
+  {
+    interval: "4h",
+    limit: 1000,
+    tableName: "four_hour_prices",
+    conflictTarget: "asset_id,open_time,source",
+    cleanupRpc: "cleanup_four_hour_prices",
+    mapCandle: mapFourHourCandle
+  }
+];
+
+// ============================================================================
+// App State and DOM
+// ============================================================================
+
+const supabaseClient = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_ANON_KEY
+);
+
+const elements = {
+  appScreen: document.getElementById("app-screen"),
+  loginBtn: document.getElementById("login-btn"),
+  loginError: document.getElementById("login-error"),
+  loginScreen: document.getElementById("login-screen"),
+  logoutBtn: document.getElementById("logout-btn"),
+  pricesDashboard: document.getElementById("prices-dashboard"),
+  scoreBreakdown: document.getElementById("score-breakdown")
+};
+
+// ============================================================================
+// Formatting Helpers
+// ============================================================================
+
+function formatEuro(value) {
+  return `EUR ${Number(value || 0).toFixed(2)}`;
+}
+
+function formatUsd(value) {
+  return `$${Number(value || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+}
+
+function formatPercent(value) {
+  return `${(Number(value || 0) * 100).toFixed(2)}%`;
+}
+
+function formatPoints(points) {
+  if (points === null) return "Info";
+  if (points > 0) return `+${points}`;
+  return `${points}`;
+}
+
+function getPointsClass(points) {
+  if (points === null || points === 0) return "points-neutral";
+  if (points > 0) return "points-positive";
+  return "points-negative";
+}
+
+// ============================================================================
+// DOM Helpers
+// ============================================================================
+
+function setTextById(id, value) {
+  const element = document.getElementById(id);
+
+  if (!element) {
+    console.warn(`Missing DOM element: #${id}`);
+    return;
+  }
+
+  element.textContent = value;
+}
+
+function createMetric(label, value) {
+  const row = document.createElement("div");
+  row.className = "metric";
+
+  const labelElement = document.createElement("span");
+  labelElement.textContent = label;
+
+  const valueElement = document.createElement("strong");
+  valueElement.textContent = value;
+
+  row.append(labelElement, valueElement);
+  return row;
+}
+
+function createSummaryRow(label, valueId, extraClassName = "") {
+  const row = document.createElement("div");
+  row.className = ["summary-row", extraClassName].filter(Boolean).join(" ");
+
+  const labelElement = document.createElement("span");
+  labelElement.textContent = label;
+
+  const valueElement = document.createElement("strong");
+  valueElement.id = valueId;
+  valueElement.textContent = "--";
+
+  row.append(labelElement, valueElement);
+  return row;
+}
+
+function groupRowsBySymbolAndGroup(rows) {
+  return rows.reduce((groupedRows, row) => {
+    groupedRows[row.symbol] ||= {};
+    groupedRows[row.symbol][row.group_name] ||= [];
+    groupedRows[row.symbol][row.group_name].push(row);
+    return groupedRows;
+  }, {});
+}
+
+function pickFirstNumber(source, keys) {
+  const key = keys.find((candidate) => source[candidate] !== undefined);
+  return key ? source[key] : null;
+}
+
+// ============================================================================
+// External API Helpers
+// ============================================================================
+
+async function fetchJson(url, errorMessage) {
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`${errorMessage}: HTTP ${response.status}`);
+  }
+
+  return response.json();
+}
+
+async function fetchBinanceKlines(binanceSymbol, interval, limit) {
+  const params = new URLSearchParams({
+    interval,
+    limit: String(limit),
+    symbol: binanceSymbol
+  });
+
+  return fetchJson(
+    `${BINANCE_API_BASE_URL}/klines?${params}`,
+    `Binance klines failed for ${binanceSymbol} ${interval}`
+  );
+}
+
+async function fetchBinanceCurrentPrice(binanceSymbol) {
+  const params = new URLSearchParams({
+    symbol: binanceSymbol
+  });
+
+  return fetchJson(
+    `${BINANCE_API_BASE_URL}/ticker/price?${params}`,
+    `Binance current price failed for ${binanceSymbol}`
+  );
+}
+
+// ============================================================================
+// Supabase Read Helpers
+// ============================================================================
 
 async function getAssetId(symbol) {
   const { data, error } = await supabaseClient
@@ -23,186 +202,32 @@ async function getAssetId(symbol) {
   return data.id;
 }
 
-async function fetchBinanceKlines(binanceSymbol, interval, limit) {
-  const url =
-    `https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${interval}&limit=${limit}`;
-
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`Binance error ${response.status} for ${binanceSymbol} ${interval}`);
-  }
-
-  return response.json();
-}
-
-function mapDailyCandle(assetId, candle) {
-  return {
-    asset_id: assetId,
-    date: new Date(candle[0]).toISOString().slice(0, 10),
-    open: Number(candle[1]),
-    high: Number(candle[2]),
-    low: Number(candle[3]),
-    close: Number(candle[4]),
-    volume: Number(candle[5]),
-    source: "binance"
-  };
-}
-
-function mapFourHourCandle(assetId, candle) {
-  return {
-    asset_id: assetId,
-    open_time: new Date(candle[0]).toISOString(),
-    close_time: new Date(candle[6]).toISOString(),
-    open: Number(candle[1]),
-    high: Number(candle[2]),
-    low: Number(candle[3]),
-    close: Number(candle[4]),
-    volume: Number(candle[5]),
-    source: "binance"
-  };
-}
-
-async function syncDailyPrices(assetSymbol, binanceSymbol) {
-  const assetId = await getAssetId(assetSymbol);
-  const candles = await fetchBinanceKlines(binanceSymbol, "1d", 400);
-
-  const rows = candles.map((candle) => mapDailyCandle(assetId, candle));
-
-  const { error: upsertError } = await supabaseClient
-    .from("daily_prices")
-    .upsert(rows, {
-      onConflict: "asset_id,date,source"
-    });
-
-  if (upsertError) {
-    throw new Error(`${assetSymbol} daily upsert failed: ${upsertError.message}`);
-  }
-
-  const { error: cleanupError } = await supabaseClient.rpc(
-    "cleanup_daily_prices",
-    {
-      p_asset_id: assetId,
-      p_source: "binance",
-      p_keep_count: 400
-    }
-  );
-
-  if (cleanupError) {
-    throw new Error(`${assetSymbol} daily cleanup failed: ${cleanupError.message}`);
-  }
-
-  return rows.length;
-}
-
-async function syncFourHourPrices(assetSymbol, binanceSymbol) {
-  const assetId = await getAssetId(assetSymbol);
-  const candles = await fetchBinanceKlines(binanceSymbol, "4h", 1000);
-
-  const rows = candles.map((candle) => mapFourHourCandle(assetId, candle));
-
-  const { error: upsertError } = await supabaseClient
-    .from("four_hour_prices")
-    .upsert(rows, {
-      onConflict: "asset_id,open_time,source"
-    });
-
-  if (upsertError) {
-    throw new Error(`${assetSymbol} 4h upsert failed: ${upsertError.message}`);
-  }
-
-  const { error: cleanupError } = await supabaseClient.rpc(
-    "cleanup_four_hour_prices",
-    {
-      p_asset_id: assetId,
-      p_source: "binance",
-      p_keep_count: 1000
-    }
-  );
-
-  if (cleanupError) {
-    throw new Error(`${assetSymbol} 4h cleanup failed: ${cleanupError.message}`);
-  }
-
-  return rows.length;
-}
-
-async function syncMarketData() {
-  for (const asset of MARKET_ASSETS) {
-    await syncDailyPrices(asset.assetSymbol, asset.binanceSymbol);
-    await syncFourHourPrices(asset.assetSymbol, asset.binanceSymbol);
-    await syncCurrentPrice(asset.assetSymbol, asset.binanceSymbol);
-  }
-}
-
-
-function formatEuro(value) {
-  return `€${Number(value || 0).toFixed(2)}`;
-}
-
-async function loadDcaRecommendations() {
-  const { data: portfolio, error: portfolioError } = await supabaseClient
+async function fetchDcaPortfolioRecommendation() {
+  const { data, error } = await supabaseClient
     .from("dca_portfolio_recommendation_view")
     .select("*")
     .single();
 
-  if (portfolioError) {
-    console.error("DCA portfolio error:", portfolioError);
-    return;
+  if (error) {
+    throw new Error(`DCA portfolio query failed: ${error.message}`);
   }
 
-  document.getElementById("btc-dca-amount").textContent = formatEuro(portfolio.btc_amount);
-  document.getElementById("eth-dca-amount").textContent = formatEuro(portfolio.eth_amount);
-  document.getElementById("usdc-dca-amount").textContent = formatEuro(portfolio.usdc_amount);
+  return data;
+}
 
-  const { data: summaries, error: summaryError } = await supabaseClient
+async function fetchDcaDashboardSummaries() {
+  const { data, error } = await supabaseClient
     .from("dca_dashboard_summary_view")
     .select("*");
 
-  if (summaryError) {
-    console.error("DCA summary error:", summaryError);
-    return;
+  if (error) {
+    throw new Error(`DCA summary query failed: ${error.message}`);
   }
 
-  summaries.forEach((item) => {
-    const symbol = item.symbol;
-
-    document.getElementById(`${symbol}-score-inline`).textContent = item.score;
-    document.getElementById(`${symbol}-recommendation-inline`).textContent = item.recommendation;
-    document.getElementById(`${symbol}-multiplier-inline`).textContent = `${item.dca_multiplier}x`;
-    document.getElementById(`${symbol}-amount-inline`).textContent =
-      formatEuro(item.recommended_amount_before_cap);
-  });
+  return data;
 }
 
-
-function formatPoints(points) {
-  if (points === null) return "Info";
-  if (points > 0) return `+${points}`;
-  return `${points}`;
-}
-
-function getPointsClass(points) {
-  if (points === null || points === 0) return "points-neutral";
-  if (points > 0) return "points-positive";
-  return "points-negative";
-}
-
-const FACTOR_ORDER = {
-  "TOTAL SCORE": 0,
-  "200DMA slope": 1,
-  "Regime": 2,
-  "200DMA position": 3,
-  "90D drawdown": 4,
-  "4H trend": 5,
-  "24H momentum": 6,
-  "3D momentum": 7,
-  "50MA 4H extension": 8,
-  "21MA 4H extension": 9,
-  "Volatility": 10
-};
-
-async function loadScoreBreakdown() {
+async function fetchScoreDetails() {
   const { data, error } = await supabaseClient
     .from("dca_score_details_view")
     .select("*")
@@ -210,101 +235,77 @@ async function loadScoreBreakdown() {
     .order("sort_order", { ascending: true });
 
   if (error) {
-    console.error("Score breakdown error:", error);
-    return;
+    throw new Error(`Score breakdown query failed: ${error.message}`);
   }
 
-  const container = document.getElementById("score-breakdown");
-  container.innerHTML = "";
-
-  const grouped = data.reduce((acc, row) => {
-    if (!acc[row.symbol]) acc[row.symbol] = {};
-    if (!acc[row.symbol][row.group_name]) acc[row.symbol][row.group_name] = [];
-    acc[row.symbol][row.group_name].push(row);
-    return acc;
-  }, {});
-
-  Object.entries(grouped).forEach(([symbol, groups]) => {
-    const assetBlock = document.createElement("div");
-    assetBlock.className = "breakdown-asset";
-
-    assetBlock.innerHTML = `
-      <h3>${symbol}</h3>
-
-      <div class="asset-summary">
-        <div class="summary-row">
-          <span>Recommendation</span>
-          <strong id="${symbol}-recommendation-inline">--</strong>
-        </div>
-
-        <div class="summary-row">
-          <span>Multiplier</span>
-          <strong id="${symbol}-multiplier-inline">--</strong>
-        </div>
-
-        <div class="summary-row">
-          <span>Monthly DCA</span>
-          <strong id="${symbol}-amount-inline">--</strong>
-        </div>
-
-        <div class="summary-row total-score">
-          <span>Total Score</span>
-          <strong id="${symbol}-score-inline">--</strong>
-        </div>
-      </div>
-    `;
-
-    Object.entries(groups).forEach(([groupName, rows]) => {
-      const groupTitle = document.createElement("h4");
-      groupTitle.className = "breakdown-group-title";
-      groupTitle.textContent = groupName;
-      assetBlock.appendChild(groupTitle);
-
-      rows.forEach((row) => {
-        const line = document.createElement("div");
-        line.className = "breakdown-row";
-
-        line.innerHTML = `
-          <div>
-            <span>${row.factor}: ${row.condition}</span>
-            <small>${row.threshold}</small>
-          </div>
-          <strong class="${getPointsClass(row.points)}">${formatPoints(row.points)}</strong>
-        `;
-
-        assetBlock.appendChild(line);
-      });
-    });
-
-    container.appendChild(assetBlock);
-  });
+  return data;
 }
 
-async function syncCurrentPrice(assetSymbol, binanceSymbol) {
-  const assetId = await getAssetId(assetSymbol);
+async function fetchPricesDashboard() {
+  const { data, error } = await supabaseClient
+    .from("prices_dashboard_view")
+    .select("*");
 
-  const response = await fetch(
-    `https://api.binance.com/api/v3/ticker/price?symbol=${binanceSymbol}`
-  );
-
-  if (!response.ok) {
-    throw new Error(`Current price fetch failed for ${binanceSymbol}`);
+  if (error) {
+    throw new Error(`Prices dashboard query failed: ${error.message}`);
   }
 
-  const quote = await response.json();
+  return data;
+}
 
-  console.log(assetSymbol, assetId);
-  console.log(quote); 
+async function fetchPortfolioSummary() {
+  const { data, error } = await supabaseClient
+    .from("portfolio_summary_view")
+    .select("*")
+    .single();
 
+  if (error) {
+    throw new Error(`Portfolio summary query failed: ${error.message}`);
+  }
+
+  return data;
+}
+
+// ============================================================================
+// Supabase Write Helpers
+// ============================================================================
+
+async function upsertRows(tableName, rows, conflictTarget, contextMessage) {
+  if (!rows.length) return;
+
+  const { error } = await supabaseClient
+    .from(tableName)
+    .upsert(rows, {
+      onConflict: conflictTarget
+    });
+
+  if (error) {
+    throw new Error(`${contextMessage} upsert failed: ${error.message}`);
+  }
+}
+
+async function cleanupPriceRows(assetId, cleanupRpc, keepCount, contextMessage) {
+  const { error } = await supabaseClient.rpc(cleanupRpc, {
+    p_asset_id: assetId,
+    p_keep_count: keepCount,
+    p_source: DATA_SOURCE
+  });
+
+  if (error) {
+    throw new Error(`${contextMessage} cleanup failed: ${error.message}`);
+  }
+}
+
+async function upsertCurrentPrice(assetId, assetSymbol, price) {
   const { error } = await supabaseClient
     .from("current_prices")
     .upsert(
       {
         asset_id: assetId,
-        symbol: assetSymbol,
-        price: Number(quote.price),
-        source: "binance",
-        fetched_at: new Date().toISOString()
+        fetched_at: new Date().toISOString(),
+        price,
+        source: DATA_SOURCE,
+        symbol: assetSymbol
       },
       {
         onConflict: "asset_id,source"
@@ -314,149 +315,392 @@ async function syncCurrentPrice(assetSymbol, binanceSymbol) {
   if (error) {
     throw new Error(`${assetSymbol} current price upsert failed: ${error.message}`);
   }
+}
 
+// ============================================================================
+// Data Mappers
+// ============================================================================
+
+function mapDailyCandle(assetId, candle) {
+  return {
+    asset_id: assetId,
+    close: Number(candle[4]),
+    date: new Date(candle[0]).toISOString().slice(0, 10),
+    high: Number(candle[2]),
+    low: Number(candle[3]),
+    open: Number(candle[1]),
+    source: DATA_SOURCE,
+    volume: Number(candle[5])
+  };
+}
+
+function mapFourHourCandle(assetId, candle) {
+  return {
+    asset_id: assetId,
+    close: Number(candle[4]),
+    close_time: new Date(candle[6]).toISOString(),
+    high: Number(candle[2]),
+    low: Number(candle[3]),
+    open: Number(candle[1]),
+    open_time: new Date(candle[0]).toISOString(),
+    source: DATA_SOURCE,
+    volume: Number(candle[5])
+  };
+}
+
+function mapCurrentPriceQuote(quote) {
   return Number(quote.price);
 }
 
-async function syncCurrentPrices() {
+// ============================================================================
+// Market Sync Workflows
+// ============================================================================
+
+async function syncPriceHistory(asset, historyConfig) {
+  const assetId = await getAssetId(asset.assetSymbol);
+  const candles = await fetchBinanceKlines(
+    asset.binanceSymbol,
+    historyConfig.interval,
+    historyConfig.limit
+  );
+
+  const rows = candles.map((candle) => historyConfig.mapCandle(assetId, candle));
+  const contextMessage = `${asset.assetSymbol} ${historyConfig.interval}`;
+
+  await upsertRows(
+    historyConfig.tableName,
+    rows,
+    historyConfig.conflictTarget,
+    contextMessage
+  );
+  await cleanupPriceRows(
+    assetId,
+    historyConfig.cleanupRpc,
+    historyConfig.limit,
+    contextMessage
+  );
+
+  return rows.length;
+}
+
+async function syncCurrentPrice(asset) {
+  const assetId = await getAssetId(asset.assetSymbol);
+  const quote = await fetchBinanceCurrentPrice(asset.binanceSymbol);
+  const price = mapCurrentPriceQuote(quote);
+
+  await upsertCurrentPrice(assetId, asset.assetSymbol, price);
+  return price;
+}
+
+async function syncAssetMarketData(asset) {
+  for (const historyConfig of PRICE_HISTORY_CONFIG) {
+    await syncPriceHistory(asset, historyConfig);
+  }
+
+  await syncCurrentPrice(asset);
+}
+
+async function syncMarketData() {
   for (const asset of MARKET_ASSETS) {
-    await syncCurrentPrice(asset.assetSymbol, asset.binanceSymbol);
+    await syncAssetMarketData(asset);
   }
 }
 
+// ============================================================================
+// Renderers
+// ============================================================================
 
-function formatUsd(value) {
-  return `$${Number(value || 0).toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })}`;
+function renderDcaPortfolioRecommendation(portfolio) {
+  setTextById("btc-dca-amount", formatEuro(portfolio.btc_amount));
+  setTextById("eth-dca-amount", formatEuro(portfolio.eth_amount));
+  setTextById("usdc-dca-amount", formatEuro(portfolio.usdc_amount));
 }
 
-function formatPercent(value) {
-  return `${(Number(value || 0) * 100).toFixed(2)}%`;
+function renderDcaSummaries(summaries) {
+  summaries.forEach((item) => {
+    const symbol = item.symbol;
+
+    setTextById(`${symbol}-score-inline`, item.score);
+    setTextById(`${symbol}-recommendation-inline`, item.recommendation);
+    setTextById(`${symbol}-multiplier-inline`, `${item.dca_multiplier}x`);
+    setTextById(
+      `${symbol}-amount-inline`,
+      formatEuro(item.recommended_amount_before_cap)
+    );
+  });
+}
+
+function renderScoreBreakdown(scoreRows) {
+  const groupedRows = groupRowsBySymbolAndGroup(scoreRows);
+  elements.scoreBreakdown.innerHTML = "";
+
+  Object.entries(groupedRows).forEach(([symbol, groups]) => {
+    const assetBlock = document.createElement("div");
+    assetBlock.className = "breakdown-asset";
+
+    const title = document.createElement("h3");
+    title.textContent = symbol;
+
+    const summary = document.createElement("div");
+    summary.className = "asset-summary";
+    summary.append(
+      createSummaryRow("Recommendation", `${symbol}-recommendation-inline`),
+      createSummaryRow("Multiplier", `${symbol}-multiplier-inline`),
+      createSummaryRow("Monthly DCA", `${symbol}-amount-inline`),
+      createSummaryRow("Total Score", `${symbol}-score-inline`, "total-score")
+    );
+
+    assetBlock.append(title, summary);
+
+    Object.entries(groups).forEach(([groupName, rows]) => {
+      const groupTitle = document.createElement("h4");
+      groupTitle.className = "breakdown-group-title";
+      groupTitle.textContent = groupName;
+      assetBlock.appendChild(groupTitle);
+
+      rows.forEach((row) => {
+        assetBlock.appendChild(createScoreBreakdownRow(row));
+      });
+    });
+
+    elements.scoreBreakdown.appendChild(assetBlock);
+  });
+}
+
+function createScoreBreakdownRow(row) {
+  const line = document.createElement("div");
+  line.className = "breakdown-row";
+
+  const detail = document.createElement("div");
+
+  const condition = document.createElement("span");
+  condition.textContent = `${row.factor}: ${row.condition}`;
+
+  const threshold = document.createElement("small");
+  threshold.textContent = row.threshold;
+
+  const points = document.createElement("strong");
+  points.className = getPointsClass(row.points);
+  points.textContent = formatPoints(row.points);
+
+  detail.append(condition, threshold);
+  line.append(detail, points);
+
+  return line;
+}
+
+function renderPricesDashboard(priceRows) {
+  elements.pricesDashboard.innerHTML = "";
+
+  priceRows.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "price-asset";
+
+    const title = document.createElement("h3");
+    title.textContent = item.symbol;
+
+    card.append(
+      title,
+      createMetric("Current Price", formatUsd(item.current_price)),
+      createMetric("24H Change", formatPercent(item.change_24h)),
+      createMetric("3D Change", formatPercent(item.change_3d)),
+      createMetric("4H Trend", item.short_term_trend),
+      createMetric("Regime", item.market_regime),
+      createMetric("200DMA Distance", formatPercent(item.distance_from_200d_ma)),
+      createMetric("90D High Drawdown", formatPercent(item.pullback_pct)),
+      createMetric(
+        "Volatility",
+        `${item.volatility_state} (${formatPercent(item.volatility_30d)})`
+      ),
+      createMetric("DCA Score", item.score)
+    );
+
+    elements.pricesDashboard.appendChild(card);
+  });
+}
+
+function renderPortfolioSummary(summary) {
+  // Note: field names are inferred from the current DOM IDs; missing fields are left unchanged.
+  const totalValue = pickFirstNumber(summary, ["total_value", "portfolio_value"]);
+  const totalInvested = pickFirstNumber(summary, ["total_invested", "invested_amount"]);
+  const unrealizedPl = pickFirstNumber(summary, ["unrealized_pl", "unrealized_pnl"]);
+  const btcAllocation = pickFirstNumber(summary, ["btc_allocation", "btc_allocation_pct"]);
+  const ethAllocation = pickFirstNumber(summary, ["eth_allocation", "eth_allocation_pct"]);
+  const usdcAllocation = pickFirstNumber(summary, ["usdc_allocation", "usdc_allocation_pct"]);
+
+  if (totalValue !== null) setTextById("total-value", formatEuro(totalValue));
+  if (totalInvested !== null) setTextById("total-invested", formatEuro(totalInvested));
+  if (unrealizedPl !== null) setTextById("unrealized-pl", formatEuro(unrealizedPl));
+  if (btcAllocation !== null) setTextById("btc-allocation", formatPercent(btcAllocation));
+  if (ethAllocation !== null) setTextById("eth-allocation", formatPercent(ethAllocation));
+  if (usdcAllocation !== null) setTextById("usdc-allocation", formatPercent(usdcAllocation));
+}
+
+// ============================================================================
+// Dashboard Loaders
+// ============================================================================
+
+async function loadScoreBreakdown() {
+  try {
+    const scoreRows = await fetchScoreDetails();
+    renderScoreBreakdown(scoreRows);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function loadDcaRecommendations() {
+  try {
+    const [portfolio, summaries] = await Promise.all([
+      fetchDcaPortfolioRecommendation(),
+      fetchDcaDashboardSummaries()
+    ]);
+
+    renderDcaPortfolioRecommendation(portfolio);
+    renderDcaSummaries(summaries);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+function formatDateTime(value) {
+  if (!value) return "--";
+
+  return new Date(value).toLocaleString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "short"
+  });
+}
+
+function createAssetSection(symbol, rows) {
+  return `
+    <div class="price-asset">
+      <h3>${symbol}</h3>
+      ${rows}
+    </div>
+  `;
+}
+
+function createMetric(label, value) {
+  return `
+    <div class="metric">
+      <span>${label}</span>
+      <strong>${value ?? "--"}</strong>
+    </div>
+  `;
 }
 
 async function loadPricesDashboard() {
   const { data, error } = await supabaseClient
     .from("prices_dashboard_view")
-    .select("*");
+    .select("*")
+    .order("symbol", { ascending: true });
 
   if (error) {
     console.error("Prices dashboard error:", error);
     return;
   }
 
-  console.log("Prices dashboard data:", data);
-  console.log("Prices dashboard error:", error);
+  const livePrices = document.getElementById("live-prices");
+  const shortTerm = document.getElementById("short-term-market");
+  const structure = document.getElementById("market-structure");
+  const valuationRisk = document.getElementById("valuation-risk");
 
-  const container = document.getElementById("prices-dashboard");
-  container.innerHTML = "";
+  livePrices.innerHTML = "";
+  shortTerm.innerHTML = "";
+  structure.innerHTML = "";
+  valuationRisk.innerHTML = "";
 
   data.forEach((item) => {
-    const card = document.createElement("div");
-    card.className = "price-asset";
+    livePrices.innerHTML += createAssetSection(
+      item.symbol,
+      createMetric("Current Price", formatUsd(item.current_price)) +
+      createMetric("Last Update", formatDateTime(item.fetched_at))
+    );
 
-    card.innerHTML = `
-      <h3>${item.symbol}</h3>
+    shortTerm.innerHTML += createAssetSection(
+      item.symbol,
+      createMetric("24H Change", formatPercent(item.change_24h)) +
+      createMetric("3D Change", formatPercent(item.change_3d)) +
+      createMetric("4H Trend", item.short_term_trend)
+    );
 
-      <div class="metric">
-        <span>Current Price</span>
-        <strong>${formatUsd(item.current_price)}</strong>
-      </div>
+    structure.innerHTML += createAssetSection(
+      item.symbol,
+      createMetric("Regime", item.market_regime) +
+      createMetric("200DMA Distance", formatPercent(item.distance_from_200d_ma)) +
+      createMetric("200DMA Slope", item.ma_200d_slope_state)
+    );
 
-      <div class="metric">
-        <span>24H Change</span>
-        <strong>${formatPercent(item.change_24h)}</strong>
-      </div>
-
-      <div class="metric">
-        <span>3D Change</span>
-        <strong>${formatPercent(item.change_3d)}</strong>
-      </div>
-
-      <div class="metric">
-        <span>4H Trend</span>
-        <strong>${item.short_term_trend}</strong>
-      </div>
-
-      <div class="metric">
-        <span>Regime</span>
-        <strong>${item.market_regime}</strong>
-      </div>
-
-      <div class="metric">
-        <span>200DMA Distance</span>
-        <strong>${formatPercent(item.distance_from_200d_ma)}</strong>
-      </div>
-
-      <div class="metric">
-        <span>90D High Drawdown</span>
-        <strong>${formatPercent(item.pullback_pct)}</strong>
-      </div>
-
-      <div class="metric">
-        <span>Volatility</span>
-        <strong>${item.volatility_state} (${formatPercent(item.volatility_30d)})</strong>
-      </div>
-
-      <div class="metric">
-        <span>DCA Score</span>
-        <strong>${item.score}</strong>
-      </div>
-    `;
-
-    container.appendChild(card);
+    valuationRisk.innerHTML += createAssetSection(
+      item.symbol,
+      createMetric("90D High Drawdown", formatPercent(item.pullback_pct)) +
+      createMetric(
+        "Volatility",
+        `${item.volatility_state} (${formatPercent(item.volatility_30d)})`
+      )
+    );
   });
 }
 
-const SUPABASE_URL = "https://ihphfkwoiiyhvvvfipal.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_19kbJOQDarnTwoqzBLSHGg_YVwoodAD";
-
-const supabaseClient = window.supabase.createClient(
-  SUPABASE_URL,
-  SUPABASE_ANON_KEY
-);
-
-const loginScreen = document.getElementById("login-screen");
-const appScreen = document.getElementById("app-screen");
-const loginBtn = document.getElementById("login-btn");
-const logoutBtn = document.getElementById("logout-btn");
-const loginError = document.getElementById("login-error");
-
-function showLogin() {
-  loginScreen.classList.remove("hidden");
-  appScreen.classList.add("hidden");
+async function loadPortfolioSummary() {
+  try {
+    const summary = await fetchPortfolioSummary();
+    renderPortfolioSummary(summary);
+    console.log("Portfolio summary:", summary);
+  } catch (error) {
+    console.error(error);
+  }
 }
 
-async function showApp() {
-  loginScreen.classList.add("hidden");
-  appScreen.classList.remove("hidden");
-  
-  
+async function refreshDashboardData() {
   try {
-  await syncMarketData();
-  alert("Market data sync complete");
+    await syncMarketData();
+    alert("Market data sync complete");
   } catch (error) {
     console.error(error);
     alert(error.message);
   }
 
   await loadScoreBreakdown();
-  await loadDcaRecommendations();
-  await loadPricesDashboard();
-    
-  const { data, error } = await supabaseClient
-    .from("portfolio_summary_view")
-    .select("*")
-    .single();
-
-  if (error) {
-    console.error("Portfolio summary error:", error);
-    return;
-  }
-
-  console.log("Portfolio summary:", data);
+  await Promise.all([
+    loadDcaRecommendations(),
+    loadPortfolioSummary(),
+    loadPricesDashboard()
+  ]);
 }
+
+// ============================================================================
+// Screen and Navigation
+// ============================================================================
+
+function showLogin() {
+  elements.loginScreen.classList.remove("hidden");
+  elements.appScreen.classList.add("hidden");
+}
+
+async function showApp() {
+  elements.loginScreen.classList.add("hidden");
+  elements.appScreen.classList.remove("hidden");
+
+  await refreshDashboardData();
+}
+
+function showPage(targetPageId) {
+  document.querySelectorAll(".page").forEach((page) => {
+    page.classList.toggle("active-page", page.id === targetPageId);
+  });
+
+  document.querySelectorAll(".nav-btn").forEach((button) => {
+    button.classList.toggle("active", button.dataset.page === targetPageId);
+  });
+}
+
+// ============================================================================
+// Auth Handlers
+// ============================================================================
 
 async function checkSession() {
   const { data, error } = await supabaseClient.auth.getSession();
@@ -469,13 +713,14 @@ async function checkSession() {
 
   if (data.session) {
     await showApp();
-  } else {
-    showLogin();
+    return;
   }
+
+  showLogin();
 }
 
-loginBtn.addEventListener("click", async () => {
-  loginError.textContent = "";
+async function handleLogin() {
+  elements.loginError.textContent = "";
 
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value;
@@ -486,34 +731,34 @@ loginBtn.addEventListener("click", async () => {
   });
 
   if (error) {
-    loginError.textContent = error.message;
+    elements.loginError.textContent = error.message;
     return;
   }
 
   await showApp();
-});
+}
 
-logoutBtn.addEventListener("click", async () => {
+async function handleLogout() {
   await supabaseClient.auth.signOut();
   showLogin();
-});
+}
 
-document.querySelectorAll(".nav-btn").forEach((button) => {
-  button.addEventListener("click", () => {
-    const targetPage = button.dataset.page;
+// ============================================================================
+// Startup
+// ============================================================================
 
-    document.querySelectorAll(".page").forEach((page) => {
-      page.classList.remove("active-page");
-    });
+function bindEvents() {
+  elements.loginBtn.addEventListener("click", handleLogin);
+  elements.logoutBtn.addEventListener("click", handleLogout);
 
-    document.getElementById(targetPage).classList.add("active-page");
-
-    document.querySelectorAll(".nav-btn").forEach((btn) => {
-      btn.classList.remove("active");
-    });
-
-    button.classList.add("active");
+  document.querySelectorAll(".nav-btn").forEach((button) => {
+    button.addEventListener("click", () => showPage(button.dataset.page));
   });
-});
+}
 
-checkSession();
+function init() {
+  bindEvents();
+  checkSession();
+}
+
+init();
