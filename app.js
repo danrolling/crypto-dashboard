@@ -324,6 +324,88 @@ async function syncCurrentPrices() {
   }
 }
 
+
+function formatUsd(value) {
+  return `$${Number(value || 0).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`;
+}
+
+function formatPercent(value) {
+  return `${(Number(value || 0) * 100).toFixed(2)}%`;
+}
+
+async function loadPricesDashboard() {
+  const { data, error } = await supabaseClient
+    .from("prices_dashboard_view")
+    .select("*");
+
+  if (error) {
+    console.error("Prices dashboard error:", error);
+    return;
+  }
+
+  const container = document.getElementById("prices-dashboard");
+  container.innerHTML = "";
+
+  data.forEach((item) => {
+    const card = document.createElement("div");
+    card.className = "price-asset";
+
+    card.innerHTML = `
+      <h3>${item.symbol}</h3>
+
+      <div class="metric">
+        <span>Current Price</span>
+        <strong>${formatUsd(item.current_price)}</strong>
+      </div>
+
+      <div class="metric">
+        <span>24H Change</span>
+        <strong>${formatPercent(item.change_24h)}</strong>
+      </div>
+
+      <div class="metric">
+        <span>3D Change</span>
+        <strong>${formatPercent(item.change_3d)}</strong>
+      </div>
+
+      <div class="metric">
+        <span>4H Trend</span>
+        <strong>${item.short_term_trend}</strong>
+      </div>
+
+      <div class="metric">
+        <span>Regime</span>
+        <strong>${item.market_regime}</strong>
+      </div>
+
+      <div class="metric">
+        <span>200DMA Distance</span>
+        <strong>${formatPercent(item.distance_from_200d_ma)}</strong>
+      </div>
+
+      <div class="metric">
+        <span>90D High Drawdown</span>
+        <strong>${formatPercent(item.pullback_pct)}</strong>
+      </div>
+
+      <div class="metric">
+        <span>Volatility</span>
+        <strong>${item.volatility_state} (${formatPercent(item.volatility_30d)})</strong>
+      </div>
+
+      <div class="metric">
+        <span>DCA Score</span>
+        <strong>${item.score}</strong>
+      </div>
+    `;
+
+    container.appendChild(card);
+  });
+}
+
 const SUPABASE_URL = "https://ihphfkwoiiyhvvvfipal.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_19kbJOQDarnTwoqzBLSHGg_YVwoodAD";
 
@@ -358,6 +440,7 @@ async function showApp() {
 
   await loadScoreBreakdown();
   await loadDcaRecommendations();
+  await loadPricesDashboard();
     
   const { data, error } = await supabaseClient
     .from("portfolio_summary_view")
