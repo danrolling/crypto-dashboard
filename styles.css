@@ -14,7 +14,8 @@ body {
 }
 
 .app {
-  max-width: 480px;
+  width: 100%;
+  max-width: 1120px;
   margin: 0 auto;
   min-height: 100vh;
   padding: 20px 16px 90px;
@@ -136,7 +137,7 @@ button {
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  max-width: 480px;
+  max-width: 1120px;
   width: 100%;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -253,4 +254,39 @@ button {
 .price-asset h3 {
   margin: 14px 0 8px;
   font-size: 16px;
+}
+
+@media (min-width: 768px) {
+  #dashboard-page,
+  #prices-page {
+    display: none;
+  }
+
+  #dashboard-page.active-page,
+  #prices-page.active-page {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+  }
+
+  #dashboard-page .card,
+  #prices-page .card {
+    margin-bottom: 0;
+  }
+
+  #dashboard-page .card:last-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 768px) {
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .logout-btn {
+    margin-top: 0;
+  }
 }
