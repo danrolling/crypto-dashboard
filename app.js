@@ -131,6 +131,7 @@ async function syncMarketData() {
   for (const asset of MARKET_ASSETS) {
     await syncDailyPrices(asset.assetSymbol, asset.binanceSymbol);
     await syncFourHourPrices(asset.assetSymbol, asset.binanceSymbol);
+    await syncCurrentPrice(asset.assetSymbol, asset.binanceSymbol);
   }
 }
 
@@ -277,6 +278,47 @@ async function loadScoreBreakdown() {
 
     container.appendChild(assetBlock);
   });
+}
+
+async function syncCurrentPrice(assetSymbol, binanceSymbol) {
+  const assetId = await getAssetId(assetSymbol);
+
+  const response = await fetch(
+    `https://api.binance.com/api/v3/ticker/price?symbol=${binanceSymbol}`
+  );
+
+  if (!response.ok) {
+    throw new Error(`Current price fetch failed for ${binanceSymbol}`);
+  }
+
+  const quote = await response.json();
+
+  const { error } = await supabaseClient
+    .from("current_prices")
+    .upsert(
+      {
+        asset_id: assetId,
+        symbol: assetSymbol,
+        price: Number(quote.price),
+        source: "binance",
+        fetched_at: new Date().toISOString()
+      },
+      {
+        onConflict: "asset_id,source"
+      }
+    );
+
+  if (error) {
+    throw new Error(`${assetSymbol} current price upsert failed: ${error.message}`);
+  }
+
+  return Number(quote.price);
+}
+
+async function syncCurrentPrices() {
+  for (const asset of MARKET_ASSETS) {
+    await syncCurrentPrice(asset.assetSymbol, asset.binanceSymbol);
+  }
 }
 
 const SUPABASE_URL = "https://ihphfkwoiiyhvvvfipal.supabase.co";
