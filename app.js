@@ -346,6 +346,9 @@ async function loadPricesDashboard() {
     return;
   }
 
+  console.log("Prices dashboard data:", data);
+  console.log("Prices dashboard error:", error);
+
   const container = document.getElementById("prices-dashboard");
   container.innerHTML = "";
 
