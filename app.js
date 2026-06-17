@@ -62,7 +62,7 @@ const elements = {
 // ============================================================================
 
 function formatEuro(value) {
-  return `EUR ${Number(value || 0).toFixed(2)}`;
+  return `€${Number(value || 0).toFixed(2)}`;
 }
 
 function formatUsd(value) {
@@ -103,7 +103,7 @@ function setTextById(id, value) {
   element.textContent = value;
 }
 
-function createMetric(label, value) {
+function createMetricElement(label, value) {
   const row = document.createElement("div");
   row.className = "metric";
 
@@ -501,18 +501,18 @@ function renderPricesDashboard(priceRows) {
 
     card.append(
       title,
-      createMetric("Current Price", formatUsd(item.current_price)),
-      createMetric("24H Change", formatPercent(item.change_24h)),
-      createMetric("3D Change", formatPercent(item.change_3d)),
-      createMetric("4H Trend", item.short_term_trend),
-      createMetric("Regime", item.market_regime),
-      createMetric("200DMA Distance", formatPercent(item.distance_from_200d_ma)),
-      createMetric("90D High Drawdown", formatPercent(item.pullback_pct)),
-      createMetric(
+      createMetricElement("Current Price", formatUsd(item.current_price)),
+      createMetricElement("24H Change", formatPercent(item.change_24h)),
+      createMetricElement("3D Change", formatPercent(item.change_3d)),
+      createMetricElement("4H Trend", item.short_term_trend),
+      createMetricElement("Regime", item.market_regime),
+      createMetricElement("200DMA Distance", formatPercent(item.distance_from_200d_ma)),
+      createMetricElement("90D High Drawdown", formatPercent(item.pullback_pct)),
+      createMetricElement(
         "Volatility",
         `${item.volatility_state} (${formatPercent(item.volatility_30d)})`
       ),
-      createMetric("DCA Score", item.score)
+      createMetricElement("DCA Score", item.score)
     );
 
     elements.pricesDashboard.appendChild(card);
@@ -583,7 +583,7 @@ function createAssetSection(symbol, rows) {
   `;
 }
 
-function createMetric(label, value) {
+function createMetricHtml(label, value) {
   return `
     <div class="metric">
       <span>${label}</span>
@@ -616,28 +616,28 @@ async function loadPricesDashboard() {
   data.forEach((item) => {
     livePrices.innerHTML += createAssetSection(
       item.symbol,
-      createMetric("Current Price", formatUsd(item.current_price)) +
-      createMetric("Last Update", formatDateTime(item.fetched_at))
+      createMetricHtml("Current Price", formatUsd(item.current_price)) +
+      createMetricHtml("Last Update", formatDateTime(item.fetched_at))
     );
 
     shortTerm.innerHTML += createAssetSection(
       item.symbol,
-      createMetric("24H Change", formatPercent(item.change_24h)) +
-      createMetric("3D Change", formatPercent(item.change_3d)) +
-      createMetric("4H Trend", item.short_term_trend)
+      createMetricHtml("24H Change", formatPercent(item.change_24h)) +
+      createMetricHtml("3D Change", formatPercent(item.change_3d)) +
+      createMetricHtml("4H Trend", item.short_term_trend)
     );
 
     structure.innerHTML += createAssetSection(
       item.symbol,
-      createMetric("Regime", item.market_regime) +
-      createMetric("200DMA Distance", formatPercent(item.distance_from_200d_ma)) +
-      createMetric("200DMA Slope", item.ma_200d_slope_state)
+      createMetricHtml("Regime", item.market_regime) +
+      createMetricHtml("200DMA Distance", formatPercent(item.distance_from_200d_ma)) +
+      createMetricHtml("200DMA Slope", item.ma_200d_slope_state)
     );
 
     valuationRisk.innerHTML += createAssetSection(
       item.symbol,
-      createMetric("90D High Drawdown", formatPercent(item.pullback_pct)) +
-      createMetric(
+      createMetricHtml("90D High Drawdown", formatPercent(item.pullback_pct)) +
+      createMetricHtml(
         "Volatility",
         `${item.volatility_state} (${formatPercent(item.volatility_30d)})`
       )
