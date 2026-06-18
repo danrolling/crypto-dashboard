@@ -54,7 +54,8 @@ const elements = {
   loginScreen: document.getElementById("login-screen"),
   logoutBtn: document.getElementById("logout-btn"),
   pricesDashboard: document.getElementById("prices-dashboard"),
-  scoreBreakdown: document.getElementById("score-breakdown")
+  scoreBreakdown: document.getElementById("score-breakdown"),
+  prepareDcaBtn: document.getElementById("prepare-dca-btn"),
 };
 
 // ============================================================================
@@ -315,6 +316,82 @@ async function upsertCurrentPrice(assetId, assetSymbol, price) {
   if (error) {
     throw new Error(`${assetSymbol} current price upsert failed: ${error.message}`);
   }
+}
+
+async function prepareDcaSession() {
+  const [portfolio, summaries, prices] = await Promise.all([
+    fetchDcaPortfolioRecommendation(),
+    fetchDcaDashboardSummaries(),
+    fetchPricesDashboard()
+  ]);
+
+  const { data: session, error: sessionError } = await supabaseClient
+    .from("dca_sessions")
+    .insert({
+      status: "pending",
+      total_budget_eur: 300,
+      source: "dashboard"
+    })
+    .select()
+    .single();
+
+  if (sessionError) {
+    throw new Error(`DCA session creation failed: ${sessionError.message}`);
+  }
+
+  const priceBySymbol = Object.fromEntries(
+    prices.map((item) => [item.symbol, item.current_price])
+  );
+
+  const summaryBySymbol = Object.fromEntries(
+    summaries.map((item) => [item.symbol, item])
+  );
+
+  const items = [
+    {
+      session_id: session.id,
+      symbol: "BTC",
+      recommended_amount_eur: portfolio.btc_amount,
+      score: summaryBySymbol.BTC.score,
+      recommendation: summaryBySymbol.BTC.recommendation,
+      multiplier: summaryBySymbol.BTC.dca_multiplier,
+      current_price_usdc: priceBySymbol.BTC,
+      estimated_quantity: portfolio.btc_amount / priceBySymbol.BTC,
+      market_regime: summaryBySymbol.BTC.regime
+    },
+    {
+      session_id: session.id,
+      symbol: "ETH",
+      recommended_amount_eur: portfolio.eth_amount,
+      score: summaryBySymbol.ETH.score,
+      recommendation: summaryBySymbol.ETH.recommendation,
+      multiplier: summaryBySymbol.ETH.dca_multiplier,
+      current_price_usdc: priceBySymbol.ETH,
+      estimated_quantity: portfolio.eth_amount / priceBySymbol.ETH,
+      market_regime: summaryBySymbol.ETH.regime
+    },
+    {
+      session_id: session.id,
+      symbol: "USDC",
+      recommended_amount_eur: portfolio.usdc_amount,
+      score: null,
+      recommendation: "Reserve allocation",
+      multiplier: null,
+      current_price_usdc: 1,
+      estimated_quantity: portfolio.usdc_amount,
+      market_regime: null
+    }
+  ];
+
+  const { error: itemsError } = await supabaseClient
+    .from("dca_session_items")
+    .insert(items);
+
+  if (itemsError) {
+    throw new Error(`DCA session items creation failed: ${itemsError.message}`);
+  }
+
+  alert("DCA session prepared");
 }
 
 // ============================================================================
@@ -757,6 +834,15 @@ function bindEvents() {
   document.querySelectorAll(".nav-btn").forEach((button) => {
     button.addEventListener("click", () => showPage(button.dataset.page));
   });
+
+  elements.prepareDcaBtn.addEventListener("click", async () => {
+  try {
+    await prepareDcaSession();
+  } catch (error) {
+    console.error(error);
+    alert(error.message);
+  }
+});
 }
 
 function init() {
