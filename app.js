@@ -885,7 +885,7 @@ async function refreshDashboardData() {
 
 
 // ============================================================================
-// Screen and Navigation
+// Screen and Navigation test 
 // ============================================================================
 
 function showLogin() {
