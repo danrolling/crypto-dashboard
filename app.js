@@ -332,6 +332,14 @@ async function upsertCurrentPrice(assetId, assetSymbol, price) {
 }
 
 async function prepareDcaSession() {
+  
+  const pendingSessions = await fetchPendingDcaSessions();
+  
+  if (pendingSessions.length > 0) {
+    alert("A pending DCA session already exists. Cancel or complete it before creating another one.");
+    return;
+  }
+  
   const executionBudgetUsdc = Number(
     prompt("How much USDC did you receive for this DCA session?")
   );
