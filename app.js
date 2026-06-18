@@ -203,6 +203,19 @@ async function getAssetId(symbol) {
   return data.id;
 }
 
+async function fetchPendingDcaSessions() {
+  const { data, error } = await supabaseClient
+    .from("dca_sessions")
+    .select("*")
+    .eq("status", "pending");
+
+  if (error) {
+    throw new Error(`Pending session check failed: ${error.message}`);
+  }
+
+  return data;
+}
+
 async function fetchDcaPortfolioRecommendation() {
   const { data, error } = await supabaseClient
     .from("dca_portfolio_recommendation_view")
