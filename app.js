@@ -56,6 +56,7 @@ const elements = {
   pricesDashboard: document.getElementById("prices-dashboard"),
   scoreBreakdown: document.getElementById("score-breakdown"),
   prepareDcaBtn: document.getElementById("prepare-dca-btn"),
+  dcaSessionsList: document.getElementById("dca-sessions-list"),
 };
 
 // ============================================================================
@@ -183,6 +184,33 @@ async function fetchBinanceCurrentPrice(binanceSymbol) {
     `${BINANCE_API_BASE_URL}/ticker/price?${params}`,
     `Binance current price failed for ${binanceSymbol}`
   );
+}
+
+async function fetchDcaSessions() {
+  const { data, error } = await supabaseClient
+    .from("dca_sessions_summary_view")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    throw new Error(`DCA sessions query failed: ${error.message}`);
+  }
+
+  return data;
+}
+
+async function fetchDcaSessionItems(sessionId) {
+  const { data, error } = await supabaseClient
+    .from("dca_session_items")
+    .select("*")
+    .eq("session_id", sessionId)
+    .order("symbol", { ascending: true });
+
+  if (error) {
+    throw new Error(`DCA session items query failed: ${error.message}`);
+  }
+
+  return data;
 }
 
 // ============================================================================
@@ -667,6 +695,54 @@ function renderPortfolioSummary(summary) {
   if (usdcAllocation !== null) setTextById("usdc-allocation", formatPercent(usdcAllocation));
 }
 
+async function loadDcaSessions() {
+  try {
+    const sessions = await fetchDcaSessions();
+    elements.dcaSessionsList.innerHTML = "";
+
+    if (!sessions.length) {
+      elements.dcaSessionsList.innerHTML = "<p>No DCA sessions yet.</p>";
+      return;
+    }
+
+    for (const session of sessions) {
+      const items = await fetchDcaSessionItems(session.id);
+
+      const block = document.createElement("div");
+      block.className = "breakdown-asset";
+
+      block.innerHTML = `
+        <h3>Session #${session.id}</h3>
+        <div class="summary-row">
+          <span>Status</span>
+          <strong>${session.status}</strong>
+        </div>
+        <div class="summary-row">
+          <span>Funding</span>
+          <strong>${session.funding_status}</strong>
+        </div>
+        <div class="summary-row">
+          <span>Execution Budget</span>
+          <strong>${formatUsd(session.execution_budget_usdc)}</strong>
+        </div>
+      `;
+
+      items.forEach((item) => {
+        block.appendChild(
+          createMetricElement(
+            `${item.action.toUpperCase()} ${item.symbol}`,
+            `${Number(item.recommended_amount_eur).toFixed(2)} ${item.quote_asset}`
+          )
+        );
+      });
+
+      elements.dcaSessionsList.appendChild(block);
+    }
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 // ============================================================================
 // Dashboard Loaders
 // ============================================================================
@@ -802,9 +878,11 @@ async function refreshDashboardData() {
   await Promise.all([
     loadDcaRecommendations(),
     loadPortfolioSummary(),
-    loadPricesDashboard()
+    loadPricesDashboard(),
+    loadDcaSessions()
   ]);
 }
+
 
 // ============================================================================
 // Screen and Navigation
