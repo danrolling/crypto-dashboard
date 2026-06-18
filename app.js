@@ -319,17 +319,39 @@ async function upsertCurrentPrice(assetId, assetSymbol, price) {
 }
 
 async function prepareDcaSession() {
+  const executionBudgetUsdc = Number(
+    prompt("How much USDC did you receive for this DCA session?")
+  );
+
+  if (!executionBudgetUsdc || executionBudgetUsdc <= 0) {
+    alert("Invalid USDC amount. DCA session was not created.");
+    return;
+  }
+
   const [portfolio, summaries, prices] = await Promise.all([
     fetchDcaPortfolioRecommendation(),
     fetchDcaDashboardSummaries(),
     fetchPricesDashboard()
   ]);
 
+  const totalBudgetEur = 300;
+
+  const btcWeight = Number(portfolio.btc_amount) / totalBudgetEur;
+  const ethWeight = Number(portfolio.eth_amount) / totalBudgetEur;
+  const usdcWeight = Number(portfolio.usdc_amount) / totalBudgetEur;
+
+  const btcUsdcAmount = executionBudgetUsdc * btcWeight;
+  const ethUsdcAmount = executionBudgetUsdc * ethWeight;
+  const reserveUsdcAmount = executionBudgetUsdc * usdcWeight;
+
   const { data: session, error: sessionError } = await supabaseClient
     .from("dca_sessions")
     .insert({
       status: "pending",
-      total_budget_eur: 300,
+      funding_status: "funded",
+      total_budget_eur: totalBudgetEur,
+      execution_budget_usdc: executionBudgetUsdc,
+      funded_at: new Date().toISOString(),
       source: "dashboard"
     })
     .select()
@@ -340,7 +362,7 @@ async function prepareDcaSession() {
   }
 
   const priceBySymbol = Object.fromEntries(
-    prices.map((item) => [item.symbol, item.current_price])
+    prices.map((item) => [item.symbol, Number(item.current_price)])
   );
 
   const summaryBySymbol = Object.fromEntries(
@@ -351,35 +373,44 @@ async function prepareDcaSession() {
     {
       session_id: session.id,
       symbol: "BTC",
-      recommended_amount_eur: portfolio.btc_amount,
+      action: "buy",
+      quote_asset: "USDC",
+      recommended_amount_eur: btcUsdcAmount,
       score: summaryBySymbol.BTC.score,
       recommendation: summaryBySymbol.BTC.recommendation,
       multiplier: summaryBySymbol.BTC.dca_multiplier,
       current_price_usdc: priceBySymbol.BTC,
-      estimated_quantity: portfolio.btc_amount / priceBySymbol.BTC,
-      market_regime: summaryBySymbol.BTC.regime
+      estimated_quantity: btcUsdcAmount / priceBySymbol.BTC,
+      market_regime: summaryBySymbol.BTC.regime,
+      status: "pending"
     },
     {
       session_id: session.id,
       symbol: "ETH",
-      recommended_amount_eur: portfolio.eth_amount,
+      action: "buy",
+      quote_asset: "USDC",
+      recommended_amount_eur: ethUsdcAmount,
       score: summaryBySymbol.ETH.score,
       recommendation: summaryBySymbol.ETH.recommendation,
       multiplier: summaryBySymbol.ETH.dca_multiplier,
       current_price_usdc: priceBySymbol.ETH,
-      estimated_quantity: portfolio.eth_amount / priceBySymbol.ETH,
-      market_regime: summaryBySymbol.ETH.regime
+      estimated_quantity: ethUsdcAmount / priceBySymbol.ETH,
+      market_regime: summaryBySymbol.ETH.regime,
+      status: "pending"
     },
     {
       session_id: session.id,
       symbol: "USDC",
-      recommended_amount_eur: portfolio.usdc_amount,
+      action: "hold",
+      quote_asset: "USDC",
+      recommended_amount_eur: reserveUsdcAmount,
       score: null,
       recommendation: "Reserve allocation",
       multiplier: null,
       current_price_usdc: 1,
-      estimated_quantity: portfolio.usdc_amount,
-      market_regime: null
+      estimated_quantity: reserveUsdcAmount,
+      market_regime: null,
+      status: "pending"
     }
   ];
 
@@ -391,7 +422,9 @@ async function prepareDcaSession() {
     throw new Error(`DCA session items creation failed: ${itemsError.message}`);
   }
 
-  alert("DCA session prepared");
+  alert(
+    `DCA session prepared from ${executionBudgetUsdc.toFixed(2)} USDC`
+  );
 }
 
 // ============================================================================
