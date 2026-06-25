@@ -360,14 +360,14 @@ async function upsertCurrentPrice(assetId, assetSymbol, price) {
 }
 
 async function prepareDcaSession() {
-  
+
   const pendingSessions = await fetchPendingDcaSessions();
-  
+
   if (pendingSessions.length > 0) {
     alert("A pending DCA session already exists. Cancel or complete it before creating another one.");
     return;
   }
-  
+
   const executionBudgetUsdc = Number(
     prompt("How much USDC did you receive for this DCA session?")
   );
@@ -728,12 +728,46 @@ async function loadDcaSessions() {
       `;
 
       items.forEach((item) => {
-        block.appendChild(
+        const assetBlock = document.createElement("div");
+        assetBlock.className = "asset-summary";
+
+        const title = document.createElement("h4");
+        title.className = "breakdown-group-title";
+        title.textContent = `${item.action.toUpperCase()} ${item.symbol}`;
+
+        assetBlock.append(
+          title,
           createMetricElement(
-            `${item.action.toUpperCase()} ${item.symbol}`,
+            "Amount",
             `${Number(item.recommended_amount_eur).toFixed(2)} ${item.quote_asset}`
+          ),
+          createMetricElement(
+            "Estimated Quantity",
+            Number(item.estimated_quantity).toFixed(8)
+          ),
+          createMetricElement(
+            "Reference Price",
+            `${formatUsd(item.current_price_usdc)}`
+          ),
+          createMetricElement(
+            "Score",
+            item.score === null ? "N/A" : item.score
+          ),
+          createMetricElement(
+            "Recommendation",
+            item.recommendation ?? "N/A"
+          ),
+          createMetricElement(
+            "Multiplier",
+            item.multiplier === null ? "N/A" : `${item.multiplier}x`
+          ),
+          createMetricElement(
+            "Regime",
+            item.market_regime ?? "N/A"
           )
         );
+
+        block.appendChild(assetBlock);
       });
 
       elements.dcaSessionsList.appendChild(block);
@@ -968,13 +1002,13 @@ function bindEvents() {
   });
 
   elements.prepareDcaBtn.addEventListener("click", async () => {
-  try {
-    await prepareDcaSession();
-  } catch (error) {
-    console.error(error);
-    alert(error.message);
-  }
-});
+    try {
+      await prepareDcaSession();
+    } catch (error) {
+      console.error(error);
+      alert(error.message);
+    }
+  });
 }
 
 function init() {
